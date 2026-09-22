@@ -6,7 +6,7 @@ const params = new URLSearchParams(location.search);
 const KEY = "mysteryProfile.session" + (params.get("slot") || "");
 const COLORS = ["#ef6f5e", "#2a9d9f", "#e69a1c", "#5aa13c", "#7b61c9", "#d65a9a", "#3b82c4", "#8a6d3b"];
 const CAT_EMOJI = { Person: "🧑", Place: "🌍", Thing: "📦", Animal: "🐾", Food: "🍎" };
-const LEVEL_NAME = { A1: "Beginner", B1: "Intermediate", B2: "Advanced" };
+const LEVEL_NAME = { A1: "Beginner", A2: "Elementary", B1: "Intermediate", B2: "Advanced" };
 
 let session = read(KEY);            // { room, player }
 let state = null;
