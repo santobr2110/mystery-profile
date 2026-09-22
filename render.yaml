@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: mystery-profile
+    runtime: python
+    plan: free
+    buildCommand: echo "No build needed"
+    startCommand: python3 server.py
+    healthCheckPath: /
