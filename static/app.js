@@ -5,7 +5,8 @@ const $toast = document.getElementById("toast");
 const params = new URLSearchParams(location.search);
 const KEY = "mysteryProfile.session" + (params.get("slot") || "");
 const COLORS = ["#ef6f5e", "#2a9d9f", "#e69a1c", "#5aa13c", "#7b61c9", "#d65a9a", "#3b82c4", "#8a6d3b"];
-const CAT_EMOJI = { Person: "🧑", Place: "🌍", Thing: "📦", Animal: "🐾" };
+const CAT_EMOJI = { Person: "🧑", Place: "🌍", Thing: "📦", Animal: "🐾", Food: "🍎" };
+const LEVEL_NAME = { A1: "Beginner", B1: "Intermediate", B2: "Advanced" };
 
 let session = read(KEY);            // { room, player }
 let state = null;
@@ -240,11 +241,18 @@ function lobbyView() {
         </div>
       </div>
       <div>
+        <h3>English level</h3>
+        <div class="chips" style="margin-top:8px">
+          ${s.allLevels.map(l => `<button class="chip ${s.settings.levels.includes(l) ? "on" : ""}" data-act="level" data-v="${l}" ${host ? "" : "disabled"}>${l} · ${LEVEL_NAME[l] || ""}</button>`).join("")}
+        </div>
+      </div>
+      <div>
         <h3>Categories</h3>
         <div class="chips" style="margin-top:8px">
           ${s.allCategories.map(c => `<button class="chip ${s.settings.categories.includes(c) ? "on" : ""}" data-act="cat" data-v="${c}" ${host ? "" : "disabled"}>${CAT_EMOJI[c] || ""} ${c}</button>`).join("")}
         </div>
       </div>
+      <p class="muted small center">${deckSize(s)} cards in this deck</p>
     </div>
     ${host
       ? `<button class="accent" data-act="start" ${enough ? "" : "disabled"}>${enough ? "Start the game ▶" : "Waiting for more players…"}</button>`
@@ -258,7 +266,15 @@ function topbar(title, extra = "") {
 }
 
 function gameHeader(g) {
-  return topbar(`Round ${g.round}`, `<span class="pill cat cat-${g.category}">${CAT_EMOJI[g.category] || ""} ${g.category}</span>`);
+  return topbar(`Round ${g.round}`,
+    `<span class="pill">${esc(g.level || "")}</span>
+     <span class="pill cat cat-${g.category}">${CAT_EMOJI[g.category] || ""} ${g.category}</span>`);
+}
+
+function deckSize(s) {
+  let n = 0;
+  for (const l of s.settings.levels) for (const c of s.settings.categories) n += s.cardCounts[l + "/" + c] || 0;
+  return n;
 }
 
 function worthBar(g) {
@@ -525,6 +541,12 @@ $app.addEventListener("click", async e => {
   }
   if (act === "toggle-answer") { ui.showAnswer = !ui.showAnswer; return render(); }
   if (act === "target") return action("settings", { target: Number(v) });
+  if (act === "level") {
+    const levels = new Set(state.settings.levels);
+    levels.has(v) ? levels.delete(v) : levels.add(v);
+    if (!levels.size) return toast("Keep at least one level.");
+    return action("settings", { levels: [...levels] });
+  }
   if (act === "cat") {
     const cats = new Set(state.settings.categories);
     cats.has(v) ? cats.delete(v) : cats.add(v);

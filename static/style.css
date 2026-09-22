@@ -13,6 +13,7 @@
   --place: #2a9d9f;
   --thing: #e69a1c;
   --animal: #5aa13c;
+  --food: #d65a9a;
   --radius: 18px;
   --shadow: 0 2px 0 rgba(31, 42, 68, .08), 0 8px 24px rgba(31, 42, 68, .08);
   color-scheme: light;
@@ -124,6 +125,7 @@ details.rules li + li { margin-top: 6px; }
 .cat-Place { background: var(--place); }
 .cat-Thing { background: var(--thing); }
 .cat-Animal { background: var(--animal); }
+.cat-Food { background: var(--food); }
 
 /* ---------- lobby */
 .room-code { font: 700 56px/1 Fredoka, sans-serif; letter-spacing: .12em; text-align: center; margin: 6px 0 2px; }

@@ -24,6 +24,15 @@ PORT = int(os.environ.get("PORT", "8000"))
 with open(os.path.join(ROOT, "cards.json"), encoding="utf-8") as f:
     CARDS = json.load(f)["cards"]
 CATEGORIES = sorted({c["category"] for c in CARDS})
+LEVEL_ORDER = ["A1", "B1", "B2", "C1"]
+LEVELS = sorted({c.get("level", "B1") for c in CARDS},
+                key=lambda l: LEVEL_ORDER.index(l) if l in LEVEL_ORDER else 99)
+DEFAULT_LEVELS = ["B1"] if "B1" in LEVELS else LEVELS[:1]
+CARD_COUNTS = {}
+for _c in CARDS:
+    _k = _c.get("level", "B1")
+    CARD_COUNTS[_k] = CARD_COUNTS.get(_k, 0) + 1
+    CARD_COUNTS[_k + "/" + _c["category"]] = CARD_COUNTS.get(_k + "/" + _c["category"], 0) + 1
 
 CLUES_PER_CARD = 10
 READER_BONUS = 2
@@ -89,7 +98,7 @@ def new_room(host_name):
         "players": [],
         "hostId": None,
         "phase": "lobby",  # lobby | playing | cardEnd | gameOver
-        "settings": {"target": 40, "categories": list(CATEGORIES)},
+        "settings": {"target": 40, "categories": list(CATEGORIES), "levels": list(DEFAULT_LEVELS)},
         "deck": [],
         "readerIdx": -1,
         "card": None,
@@ -163,7 +172,11 @@ def points_now(room):
 
 def build_deck(room):
     cats = room["settings"]["categories"] or CATEGORIES
-    deck = [i for i, c in enumerate(CARDS) if c["category"] in cats]
+    levels = room["settings"].get("levels") or DEFAULT_LEVELS
+    deck = [i for i, c in enumerate(CARDS)
+            if c["category"] in cats and c.get("level", "B1") in levels]
+    if not deck:  # no card matches: fall back to the whole deck
+        deck = list(range(len(CARDS)))
     random.shuffle(deck)
     room["deck"] = deck
 
@@ -246,7 +259,10 @@ def act(room, player, data):
             raise GameError("Only the host can change settings.")
         target = int(data.get("target", room["settings"]["target"]))
         cats = [c for c in data.get("categories", room["settings"]["categories"]) if c in CATEGORIES]
-        room["settings"] = {"target": max(10, min(200, target)), "categories": cats or list(CATEGORIES)}
+        levels = [l for l in data.get("levels", room["settings"]["levels"]) if l in LEVELS]
+        room["settings"] = {"target": max(10, min(200, target)),
+                            "categories": cats or list(CATEGORIES),
+                            "levels": levels or list(DEFAULT_LEVELS)}
         bump(room)
 
     elif kind == "start":
@@ -399,14 +415,16 @@ def view(room, me):
                 "online": is_online(p)} for p in room["players"]]
     state = {"version": room["version"], "code": room["code"], "you": me["id"],
              "hostId": room["hostId"], "phase": room["phase"], "settings": room["settings"],
-             "allCategories": CATEGORIES, "players": players, "log": room["log"],
+             "allCategories": CATEGORIES, "allLevels": LEVELS,
+             "cardCounts": CARD_COUNTS, "players": players, "log": room["log"],
              "cluesPerCard": CLUES_PER_CARD, "readerBonus": READER_BONUS, "lanUrl": LAN_URL,
              "minPlayers": MIN_PLAYERS, "maxPlayers": MAX_PLAYERS}
     if room["phase"] in ("playing", "cardEnd") and room["card"]:
         card = room["card"]
         rd = reader(room)
         cg = current_guesser(room)
-        g = {"round": room["round"], "category": card["category"], "readerId": rd["id"],
+        g = {"round": room["round"], "category": card["category"],
+             "level": card.get("level", "B1"), "readerId": rd["id"],
              "currentId": cg["id"] if cg else None, "step": room["step"],
              "revealed": [{"n": n, "text": card["clues"][n - 1]} for n in room["revealed"]],
              "pointsNow": points_now(room), "lastGuess": room["lastGuess"],
