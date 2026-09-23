@@ -110,6 +110,7 @@ def new_room(host_name):
         "result": None,
         "log": [],
         "round": 0,
+        "overtime": 0,
         "version": 1,
         "touched": time.time(),
     }
@@ -240,13 +241,39 @@ def end_card(room, winner, clues_used=None):
         bump(room, "Nobody got it. It was %s." % result["answer"])
 
 
+def standings(room):
+    """Everyone gets the same number of turns: the game can only end when the
+    rotation is complete, someone reached the target and a single player leads."""
+    n = max(1, len(room["players"]))
+    top = max((p["score"] for p in room["players"]), default=0)
+    leaders = [p for p in room["players"] if p["score"] == top]
+    return {"reached": top >= room["settings"]["target"],
+            "cardsLeft": (-room["round"]) % n,          # cards until everyone has read equally
+            "tie": len(leaders) > 1,
+            "leaders": [p["id"] for p in leaders]}
+
+
+MAX_OVERTIME = 2  # extra rounds allowed to break a tie before the win is shared
+
+
 def finish_or_next(room):
-    target = room["settings"]["target"]
-    if any(p["score"] >= target for p in room["players"]):
-        room["phase"] = "gameOver"
-        bump(room, "Game over!")
-    else:
-        start_card(room)
+    s = standings(room)
+    if s["reached"] and not s["cardsLeft"]:
+        if not s["tie"]:
+            room["phase"] = "gameOver"
+            bump(room, "Game over!")
+            return
+        room["overtime"] = room.get("overtime", 0) + 1
+        if room["overtime"] > MAX_OVERTIME:
+            room["phase"] = "gameOver"
+            bump(room, "Still tied — the win is shared!")
+            return
+    if s["reached"] and s["cardsLeft"]:
+        bump(room, "Target reached! %d card(s) left so everyone plays the same number of turns."
+             % s["cardsLeft"])
+    elif s["reached"] and s["tie"]:
+        bump(room, "It's a tie at the top — one more round to decide!")
+    start_card(room)
 
 
 def act(room, player, data):
@@ -275,6 +302,7 @@ def act(room, player, data):
             p["cards"] = 0
         room["readerIdx"] = random.randrange(len(room["players"])) - 1
         room["round"] = 0
+        room["overtime"] = 0
         build_deck(room)
         start_card(room)
 
@@ -417,6 +445,7 @@ def view(room, me):
              "hostId": room["hostId"], "phase": room["phase"], "settings": room["settings"],
              "allCategories": CATEGORIES, "allLevels": LEVELS,
              "cardCounts": CARD_COUNTS, "players": players, "log": room["log"],
+             "standings": standings(room) if room["phase"] in ("playing", "cardEnd") else None,
              "cluesPerCard": CLUES_PER_CARD, "readerBonus": READER_BONUS, "lanUrl": LAN_URL,
              "minPlayers": MIN_PLAYERS, "maxPlayers": MAX_PLAYERS}
     if room["phase"] in ("playing", "cardEnd") and room["card"]:

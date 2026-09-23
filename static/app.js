@@ -5,7 +5,7 @@ const $toast = document.getElementById("toast");
 const params = new URLSearchParams(location.search);
 const KEY = "mysteryProfile.session" + (params.get("slot") || "");
 const COLORS = ["#ef6f5e", "#2a9d9f", "#e69a1c", "#5aa13c", "#7b61c9", "#d65a9a", "#3b82c4", "#8a6d3b"];
-const CAT_EMOJI = { Person: "🧑", Place: "🌍", Thing: "📦", Animal: "🐾", Food: "🍎" };
+const CAT_EMOJI = { Person: "🧑", Place: "🌍", Thing: "📦", Animal: "🐾", Food: "🍎", Famous: "🌟", Year: "📅" };
 const LEVEL_NAME = { A1: "Beginner", A2: "Elementary", B1: "Intermediate", B2: "Advanced" };
 
 let session = read(KEY);            // { room, player }
@@ -172,7 +172,7 @@ function rulesBlock() {
       <li>The reader <b>reads that clue aloud</b> in English. Everyone also sees it on screen.</li>
       <li>Then you can <b>make one guess</b> — type it, or say it out loud — or pass.</li>
       <li>The fewer clues used, the more points: clue 1 = 10 pts, clue 10 = 1 pt. The reader gets +2 when someone gets it.</li>
-      <li>The first player to reach the target score wins!</li>
+      <li>The first player to reach the target score wins — but the game only ends when <b>everyone has had the same number of turns</b>, so the last players always get their chance.</li>
     </ol>
   </details>`;
 }
@@ -239,6 +239,7 @@ function lobbyView() {
         <div class="chips" style="margin-top:8px">
           ${[25, 40, 60, 80].map(t => `<button class="chip ${s.settings.target === t ? "on" : ""}" data-act="target" data-v="${t}" ${host ? "" : "disabled"}>${t} points</button>`).join("")}
         </div>
+        <p class="muted small" style="margin-top:8px">The game ends only after everyone has played the same number of turns.</p>
       </div>
       <div>
         <h3>English level</h3>
@@ -271,6 +272,14 @@ function gameHeader(g) {
      <span class="pill cat cat-${g.category}">${CAT_EMOJI[g.category] || ""} ${g.category}</span>`);
 }
 
+function finalNotice() {
+  const st = state.standings;
+  if (!st || !st.reached) return "";
+  if (st.cardsLeft) return `<div class="notice">🏁 Target reached! ${st.cardsLeft} more card${st.cardsLeft > 1 ? "s" : ""} — everyone gets the same number of turns.</div>`;
+  if (st.tie) return `<div class="notice">🏁 It's a tie at the top — one more round decides the winner!</div>`;
+  return "";
+}
+
 function deckSize(s) {
   let n = 0;
   for (const l of s.settings.levels) for (const c of s.settings.categories) n += s.cardCounts[l + "/" + c] || 0;
@@ -301,6 +310,7 @@ function gameView() {
   if (amReader) {
     html += `
     <div class="stack">
+      ${finalNotice()}
       <div class="role reader"><span class="emoji">🎙️</span><div>You are the reader.<div class="small" style="font-weight:600;opacity:.8">Don't show your screen!</div></div></div>
       <div class="card secret">
         <h3>The answer is</h3>
@@ -326,7 +336,7 @@ function gameView() {
     return html;
   }
 
-  html += `<div class="stack">`;
+  html += `<div class="stack">` + finalNotice();
   if (amCurrent && g.step === "pick") {
     html += `
       <div class="role me anim-pop"><span class="emoji">👉</span><div>Your turn! Pick a clue number.</div></div>
@@ -347,7 +357,7 @@ function gameView() {
         ${sayBtn(latest.text)}
       </div>
       <form class="card stack" data-form="guess">
-        <label for="guess">What ${g.category.toLowerCase()} is it?</label>
+        <label for="guess">${g.category === "Famous" ? "Who is it?" : g.category === "Year" ? "Which year is it?" : `What ${g.category.toLowerCase()} is it?`}</label>
         <input id="guess" type="text" maxlength="60" autocomplete="off" autocapitalize="words" enterkeyhint="send" placeholder="Type your guess…">
         <div class="row"><button type="submit" class="accent grow">Guess for ${g.pointsNow} pts</button><button type="button" class="secondary" style="width:auto" data-act="pass">Pass</button></div>
         <p class="muted small center">You can also say it out loud — the reader can mark it correct.</p>
@@ -422,7 +432,7 @@ function scoreboard() {
   let prev = null, rank = 0;
   return `
   <div class="card">
-    <div class="row" style="margin-bottom:4px"><h3 class="grow">Ranking</h3><span class="muted small">First to ${target} wins</span></div>
+    <div class="row" style="margin-bottom:4px"><h3 class="grow">Ranking</h3><span class="muted small">First to ${target} · equal turns</span></div>
     <ul class="board">
       ${ranking().map((p, i) => {
         if (p.score !== prev) { rank = i + 1; prev = p.score; }
@@ -463,6 +473,7 @@ function cardEndView() {
     </div>
     ${!r.winnerId && lg && !lg.correct && g.readerId === state.you
       ? `<div class="notice bad stack"><p>Last guess: “${esc(lg.text)}” by ${esc(nameOf(lg.playerId))}.</p><button class="secondary" data-act="accept">Actually, that's right — accept it</button></div>` : ""}
+    ${finalNotice()}
     ${canNext ? `<button class="accent" data-act="next">Next card ▶</button>` : `<p class="center muted">Waiting for ${esc(nameOf(g.readerId))} to show the next card…</p>`}
     ${scoreboard()}
     <div class="card">
