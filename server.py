@@ -70,14 +70,102 @@ def distance(a, b):
     return prev[-1]
 
 
+def singular(word):
+    """Rough singular, so 'boots' and 'boot' count as the same guess."""
+    for end, cut in (("ies", 3), ("ses", 2), ("xes", 2), ("hes", 2), ("s", 1)):
+        if word.endswith(end) and not word.endswith("ss") and len(word) - cut >= 3:
+            return word[:-cut] + ("y" if end == "ies" else "")
+    return word
+
+
+def stem_words(text):
+    return " ".join(singular(w) for w in text.split())
+
+
+PHONETIC_SUBS = [("ough", "f"), ("augh", "af"), ("ph", "f"), ("sch", "sk"), ("sh", "x"),
+                 ("ch", "x"), ("th", "t"), ("wh", "w"), ("qu", "kw"), ("ck", "k"),
+                 ("kn", "n"), ("gn", "n"), ("wr", "r"), ("mb", "m"), ("ce", "se"),
+                 ("ci", "si"), ("cy", "sy"), ("c", "k"), ("z", "s"), ("x", "ks"), ("y", "i")]
+
+
+def phonetic(text):
+    """A rough 'how it sounds' key: 'scissors' and 'sizors' collapse to the same string."""
+    out = []
+    for word in text.split():
+        w = word
+        for a, b in PHONETIC_SUBS:
+            w = w.replace(a, b)
+        w = w[:1] + re.sub(r"[aeiou]", "", w[1:])     # vowels are the usual doubt
+        w = re.sub(r"(.)\1+", r"\1", w)               # double letters sound the same
+        out.append(w or word[:1])
+    return " ".join(out)
+
+
+def tolerance_for(text):
+    """How many typos to forgive: about one per four letters, never more than three."""
+    letters = len(text.replace(" ", ""))
+    return 0 if letters < 4 else min(3, max(1, letters // 4))
+
+
+def forms(text):
+    n = normalize(text)
+    s = stem_words(n)
+    return {n, s, n.replace(" ", ""), s.replace(" ", "")}
+
+
+def load_words():
+    """The English used in the deck itself: the words a player might actually mean.
+    A guess that is one of these is a different word, not a misspelling."""
+    words = set()
+    for card in CARDS:
+        for clue in card["clues"]:
+            for w in re.findall(r"[a-z]+", clue.lower()):
+                if len(w) >= 3:
+                    words.add(w)
+                    words.add(singular(w))
+    return words
+
+
+WORDS = load_words()
+
+
+def real_word(text):
+    return all(w in WORDS for w in text.split())
+
+
+# every answer and alias in the deck, so a typo is never "corrected" into another card
+ALL_ANSWERS = set()
+for _c in CARDS:
+    for _name in [_c["answer"]] + _c.get("aliases", []):
+        ALL_ANSWERS |= forms(_name)
+
+
 def is_correct(guess, card):
     g = normalize(guess)
     if not g:
         return False
-    for option in [card["answer"]] + card.get("aliases", []):
-        o = normalize(option)
-        tolerance = 2 if len(o) >= 8 else 1 if len(o) >= 5 else 0
-        if distance(g, o) <= tolerance or g.replace(" ", "") == o.replace(" ", ""):
+    options = [card["answer"]] + card.get("aliases", [])
+    mine = set()
+    for option in options:
+        mine |= forms(option)
+    if forms(g) & mine:                  # same word apart from case, accents, plural or spacing
+        return True
+    if any(ch.isdigit() for ch in "".join(options)):
+        return False                     # years must be exact: 1888 is not 1889
+    if forms(g) & ALL_ANSWERS:
+        return False                     # exactly another card's answer, so not a typo of this one
+    gs, gp = stem_words(g), phonetic(stem_words(g))
+    if real_word(gs) and len(gs.replace(" ", "")) < 8:
+        return False                     # a short, real English word is a different answer, not a typo
+    for option in options:
+        o = stem_words(normalize(option))
+        if distance(gs, o) <= tolerance_for(o):
+            return True
+        if len(o.replace(" ", "")) >= 6 and gp == phonetic(o):
+            return True                  # spelled differently, sounds the same
+        ow, gw = o.split(), gs.split()   # several words: forgive a typo inside each one
+        if len(ow) > 1 and len(ow) == len(gw) and \
+                all(distance(a, b) <= tolerance_for(b) for a, b in zip(gw, ow)):
             return True
     return False
 
