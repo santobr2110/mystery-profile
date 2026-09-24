@@ -115,8 +115,9 @@ details.rules ol { padding-left: 20px; margin: 10px 0 0; }
 details.rules li + li { margin-top: 6px; }
 
 /* ---------- top bar */
-.topbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-.topbar .title { flex: 1; font: 600 20px Fredoka, sans-serif; }
+.topbar { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+.topbar .title { flex: 1; font: 600 20px Fredoka, sans-serif; white-space: nowrap; min-width: 0; }
+.topbar .pill { flex: none; }
 .pill {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 11px; border-radius: 99px; font-size: 13px; font-weight: 800;
@@ -198,6 +199,19 @@ details.rules li + li { margin-top: 6px; }
 .worth { font: 700 15px Fredoka, sans-serif; }
 .meter { height: 8px; border-radius: 9px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--line); }
 .meter > i { display: block; height: 100%; background: var(--accent); border-radius: 9px; transition: width .4s; }
+
+.pt {
+  margin-top: 4px;
+  font-size: .92em; font-style: italic; font-weight: 600;
+  color: var(--ink-2);
+}
+.bigclue .pt, .secret .pt { font-size: 17px; margin: 0 0 12px; font-style: normal; }
+button.ptbtn {
+  width: auto; min-height: 30px; height: 30px; padding: 0 10px;
+  font-size: 12px; letter-spacing: .04em; flex: none;
+  background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line);
+}
+button.ptbtn.on { background: var(--good); border-color: var(--good); color: #fff; }
 
 /* ---------- scoreboard */
 .board { list-style: none; padding: 0; margin: 0; }

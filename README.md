@@ -16,17 +16,19 @@ Não precisa instalar nada, porque usa o Python que já vem no Mac.
 
 ## Como jogar
 
-- A cada rodada, um jogador é o **reader** e só ele vê a resposta secreta e as 10 pistas.
+- Uma **rodada** tem uma carta para cada jogador: todos leem uma vez, e a rodada inteira é da **mesma categoria**. Na rodada seguinte a categoria muda para todos (sem repetir a anterior).
+- A cada carta, um jogador é o **reader** e só ele vê a resposta secreta e as 10 pistas.
 - Os outros jogam em turnos: escolhem um número de 1 a 10, o reader **lê a pista em voz alta** (em inglês) e a pista também aparece nas telas.
 - Quem escolheu pode dar **um palpite**, digitado (erros pequenos de ortografia são aceitos) ou falado (o reader marca ✓ Correct), ou pode passar.
 - Pontos: acertar com 1 pista vale 10, com 10 pistas vale 1. O reader ganha +2 quando alguém acerta.
 - Antes de começar, o anfitrião escolhe o **nível de inglês** (A1, A2, B1 e/ou B2) e as categorias. O lobby mostra quantas cartas o baralho escolhido tem.
 - O primeiro jogador a atingir a meta (25/40/60/80) vence, **mas a partida só acaba quando todos tiverem jogado o mesmo número de turnos**, então quem joga por último sempre tem a sua chance. Se der empate na liderança, o jogo segue por até duas rodadas extras; persistindo o empate, a vitória é compartilhada.
 - No fim de cada carta aparecem todas as pistas com 🔊 para ouvir a pronúncia (revisão de vocabulário).
+- Nos níveis **A1 e A2**, o botão **🇧🇷 PT** no topo mostra a tradução de cada pista em português, e no fim da carta aparece também a tradução da resposta. A escolha fica salva no celular de cada jogador. B1 e B2 não têm tradução, de propósito.
 
 ## Adicionar cartas
 
-Edite `cards.json`. Cada carta tem `category` (Person, Place, Thing, Food, Animal, Famous ou Year), `level` (A1, A2, B1 ou B2), `answer`, `aliases` (outras respostas aceitas) e exatamente **10** `clues`. Categorias e níveis novos aparecem sozinhos no lobby. Reinicie o servidor depois de editar.
+Edite `cards.json`. Cada carta tem `category` (Person, Place, Thing, Food, Animal, Famous ou Year), `level` (A1, A2, B1 ou B2), `answer`, `aliases` (outras respostas aceitas) e exatamente **10** `clues`. As cartas de A1 e A2 têm ainda `pt` com `answer` e as 10 traduções, na mesma ordem das pistas. Categorias e níveis novos aparecem sozinhos no lobby. Reinicie o servidor depois de editar.
 
 Total atual: **940 cartas** — 150 no A1, 180 no A2, 280 no B1 e 330 no B2.
 

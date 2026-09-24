@@ -110,6 +110,9 @@ def new_room(host_name):
         "result": None,
         "log": [],
         "round": 0,
+        "roundNo": 0,
+        "roundCategory": None,
+        "catCycle": [],
         "overtime": 0,
         "version": 1,
         "touched": time.time(),
@@ -171,27 +174,60 @@ def points_now(room):
 
 # ---------------------------------------------------------------- game flow
 
-def build_deck(room):
+def eligible(room):
     cats = room["settings"]["categories"] or CATEGORIES
     levels = room["settings"].get("levels") or DEFAULT_LEVELS
     deck = [i for i, c in enumerate(CARDS)
             if c["category"] in cats and c.get("level", "B1") in levels]
-    if not deck:  # no card matches: fall back to the whole deck
-        deck = list(range(len(CARDS)))
+    return deck or list(range(len(CARDS)))  # no card matches: fall back to everything
+
+
+def build_deck(room):
+    deck = eligible(room)
     random.shuffle(deck)
     room["deck"] = deck
+
+
+def next_category(room):
+    """One category per round: everybody plays the same one, and it changes next round."""
+    available = sorted({CARDS[i]["category"] for i in eligible(room)})
+    pool = [c for c in room.get("catCycle", []) if c in available]
+    if not pool:
+        pool = available[:]
+        random.shuffle(pool)
+        if len(pool) > 1 and pool[-1] == room.get("roundCategory"):
+            pool[0], pool[-1] = pool[-1], pool[0]   # don't repeat the category we just played
+    room["roundCategory"] = pool.pop()
+    room["catCycle"] = pool
+
+
+def draw_card(room):
+    """Take the next card of the round's category, reshuffling the deck when it runs out."""
+    for _ in range(2):
+        for pos in range(len(room["deck"]) - 1, -1, -1):
+            if CARDS[room["deck"][pos]]["category"] == room["roundCategory"]:
+                return CARDS[room["deck"].pop(pos)]
+        build_deck(room)
+    return CARDS[room["deck"].pop()]
 
 
 def start_card(room):
     if not room["deck"]:
         build_deck(room)
-    base = CARDS[room["deck"].pop()]
-    clues = base["clues"][:CLUES_PER_CARD]
-    random.shuffle(clues)
-    room["card"] = dict(base, clues=clues)
+    n = len(room["players"])
+    new_round = room["round"] % n == 0        # everyone has read the same number of cards
+    if new_round:
+        room["roundNo"] = room.get("roundNo", 0) + 1
+        next_category(room)
+    base = draw_card(room)
+    pt = base.get("pt") or {}
+    pairs = list(zip(base["clues"][:CLUES_PER_CARD],
+                     (pt.get("clues") or [None] * CLUES_PER_CARD)[:CLUES_PER_CARD]))
+    random.shuffle(pairs)
+    room["card"] = dict(base, clues=[t for t, _ in pairs], cluesPt=[t for _, t in pairs],
+                        answerPt=pt.get("answer"))
     room["readerIdx"] += 1
     rd = reader(room)
-    n = len(room["players"])
     start = room["readerIdx"] % n
     room["guessers"] = [room["players"][(start + k) % n]["id"] for k in range(1, n)]
     room["turn"] = 0
@@ -202,7 +238,11 @@ def start_card(room):
     room["result"] = None
     room["round"] += 1
     room["phase"] = "playing"
-    bump(room, "New card! %s is the reader." % rd["name"])
+    if new_round:
+        bump(room, "Round %d — the category is %s! %s reads first."
+             % (room["roundNo"], room["roundCategory"], rd["name"]))
+    else:
+        bump(room, "New card! %s is the reader." % rd["name"])
 
 
 def skip_offline(room):
@@ -226,7 +266,8 @@ def end_card(room, winner, clues_used=None):
     result = {"answer": room["card"]["answer"], "category": room["card"]["category"],
               "winnerId": None, "points": 0, "readerId": rd["id"], "readerPoints": 0,
               "cluesUsed": clues_used or len(room["revealed"]),
-              "clues": room["card"]["clues"], "fact": room["card"].get("fact", "")}
+              "clues": room["card"]["clues"], "cluesPt": room["card"]["cluesPt"],
+              "answerPt": room["card"].get("answerPt"), "fact": room["card"].get("fact", "")}
     if winner:
         pts = CLUES_PER_CARD + 1 - max(1, result["cluesUsed"])
         winner["score"] += pts
@@ -302,7 +343,10 @@ def act(room, player, data):
             p["cards"] = 0
         room["readerIdx"] = random.randrange(len(room["players"])) - 1
         room["round"] = 0
+        room["roundNo"] = 0
         room["overtime"] = 0
+        room["catCycle"] = []
+        room["roundCategory"] = None
         build_deck(room)
         start_card(room)
 
@@ -452,15 +496,21 @@ def view(room, me):
         card = room["card"]
         rd = reader(room)
         cg = current_guesser(room)
+        n = max(1, len(room["players"]))
         g = {"round": room["round"], "category": card["category"],
+             "roundNo": room.get("roundNo", 1),
+             "cardInRound": (room["round"] - 1) % n + 1, "cardsPerRound": n,
              "level": card.get("level", "B1"), "readerId": rd["id"],
              "currentId": cg["id"] if cg else None, "step": room["step"],
-             "revealed": [{"n": n, "text": card["clues"][n - 1]} for n in room["revealed"]],
+             "revealed": [{"n": n, "text": card["clues"][n - 1], "pt": card["cluesPt"][n - 1]}
+                          for n in room["revealed"]],
+             "hasPt": any(card["cluesPt"]),
              "pointsNow": points_now(room), "lastGuess": room["lastGuess"],
              "guessers": room["guessers"]}
         if rd is me:
-            g["secret"] = {"answer": card["answer"],
-                           "clues": [{"n": i + 1, "text": t} for i, t in enumerate(card["clues"])]}
+            g["secret"] = {"answer": card["answer"], "answerPt": card.get("answerPt"),
+                           "clues": [{"n": i + 1, "text": t, "pt": card["cluesPt"][i]}
+                                     for i, t in enumerate(card["clues"])]}
         if room["phase"] == "cardEnd":
             g["result"] = room["result"]
         state["game"] = g

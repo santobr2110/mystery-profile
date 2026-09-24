@@ -12,7 +12,7 @@ let session = read(KEY);            // { room, player }
 let state = null;
 let version = 0;
 let pollGen = 0;
-let ui = { showAnswer: false, busy: false };
+let ui = { showAnswer: false, busy: false, pt: read("mysteryProfile.pt") === true };
 let prevTurnKey = "";
 
 // ------------------------------------------------------------ helpers
@@ -53,6 +53,13 @@ function speak(text) {
   speechSynthesis.speak(u);
 }
 function sayBtn(text) { return `<button class="icon" data-say="${esc(text)}" aria-label="Listen">🔊</button>`; }
+function ptLine(text) {
+  return ui.pt && text ? `<div class="pt">${esc(text)}</div>` : "";
+}
+function ptToggle() {
+  if (!state.game || !state.game.hasPt) return "";
+  return `<button class="pill ptbtn ${ui.pt ? "on" : ""}" data-act="toggle-pt" title="Tradução">🇧🇷 PT</button>`;
+}
 
 // ------------------------------------------------------------ network
 
@@ -167,7 +174,8 @@ function rulesBlock() {
   <details class="rules card flat">
     <summary>How to play</summary>
     <ol class="small">
-      <li>Each round, one player is the <b>reader</b>. Only the reader sees the secret answer and its 10 clues.</li>
+      <li>A round has one card per player: everybody reads once, and the whole round uses the <b>same category</b>. The category changes in the next round.</li>
+      <li>On each card one player is the <b>reader</b>. Only the reader sees the secret answer and its 10 clues.</li>
       <li>The other players take turns. On your turn, <b>pick a number</b> from 1 to 10.</li>
       <li>The reader <b>reads that clue aloud</b> in English. Everyone also sees it on screen.</li>
       <li>Then you can <b>make one guess</b> — type it, or say it out loud — or pass.</li>
@@ -215,7 +223,8 @@ function lobbyView() {
   const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   const base = local && s.lanUrl ? s.lanUrl : location.origin;
   const link = `${base}/?room=${s.code}`;
-  const enough = s.players.length >= s.minPlayers;
+  const cards = deckSize(s);
+  const enough = s.players.length >= s.minPlayers && cards > 0;
   return `
   <div class="stack">
     ${topbar("Lobby")}
@@ -253,10 +262,11 @@ function lobbyView() {
           ${s.allCategories.map(c => `<button class="chip ${s.settings.categories.includes(c) ? "on" : ""}" data-act="cat" data-v="${c}" ${host ? "" : "disabled"}>${CAT_EMOJI[c] || ""} ${c}</button>`).join("")}
         </div>
       </div>
-      <p class="muted small center">${deckSize(s)} cards in this deck</p>
+      <p class="${cards ? "muted small center" : "notice bad small center"}">${
+        cards ? `${cards} cards in this deck` : "No cards match this level and category — change one of them."}</p>
     </div>
     ${host
-      ? `<button class="accent" data-act="start" ${enough ? "" : "disabled"}>${enough ? "Start the game ▶" : "Waiting for more players…"}</button>`
+      ? `<button class="accent" data-act="start" ${enough ? "" : "disabled"}>${cards === 0 ? "Pick a level and category with cards" : enough ? "Start the game ▶" : "Waiting for more players…"}</button>`
       : `<p class="center muted">Waiting for <b>${esc(nameOf(s.hostId))}</b> to start the game…</p>`}
     ${rulesBlock()}
   </div>`;
@@ -267,8 +277,8 @@ function topbar(title, extra = "") {
 }
 
 function gameHeader(g) {
-  return topbar(`Round ${g.round}`,
-    `<span class="pill">${esc(g.level || "")}</span>
+  return topbar(`Round ${g.roundNo || g.round}`,
+    `${ptToggle()}<span class="pill">${esc(g.level || "")}</span>
      <span class="pill cat cat-${g.category}">${CAT_EMOJI[g.category] || ""} ${g.category}</span>`);
 }
 
@@ -291,7 +301,8 @@ function worthBar(g) {
   return `
   <div>
     <div class="row small" style="margin-bottom:6px">
-      <span class="grow muted"><b>${used}</b> of ${state.cluesPerCard} clues opened</span>
+      <span class="grow muted"><b>${used}</b> of ${state.cluesPerCard} clues opened${
+        g.cardsPerRound > 1 ? ` · card ${g.cardInRound}/${g.cardsPerRound} of this round` : ""}</span>
       <span class="worth">Worth ${g.pointsNow} pts</span>
     </div>
     <div class="meter"><i style="width:${(used / state.cluesPerCard) * 100}%"></i></div>
@@ -324,7 +335,7 @@ function gameView() {
           ${g.secret.clues.map(c => {
             const read = g.revealed.some(r => r.n === c.n);
             const now = latest && latest.n === c.n && g.step === "guess";
-            return `<li class="${now ? "now" : read ? "read" : ""}"><span class="n">${c.n}</span><span class="t">${esc(c.text)}</span>${now ? sayBtn(c.text) : ""}</li>`;
+            return `<li class="${now ? "now" : read ? "read" : ""}"><span class="n">${c.n}</span><span class="t">${esc(c.text)}${ptLine(c.pt)}</span>${now ? sayBtn(c.text) : ""}</li>`;
           }).join("")}
         </ul>
       </div>
@@ -354,6 +365,7 @@ function gameView() {
       <div class="card bigclue anim-pop">
         <div class="num">Clue #${latest.n}</div>
         <div class="text">${esc(latest.text)}</div>
+        ${ptLine(latest.pt)}
         ${sayBtn(latest.text)}
       </div>
       <form class="card stack" data-form="guess">
@@ -372,6 +384,7 @@ function gameView() {
       <div class="card bigclue anim-pop">
         <div class="num">Clue #${latest.n}</div>
         <div class="text">${esc(latest.text)}</div>
+        ${ptLine(latest.pt)}
         ${sayBtn(latest.text)}
       </div>`;
     }
@@ -396,6 +409,7 @@ function readerActions(g, current, latest) {
     <div class="card stack anim-pop">
       <p><b>${esc(current)}</b> picked <b>clue #${latest.n}</b>. Read it aloud:</p>
       <p class="display" style="font-size:21px">“${esc(latest.text)}”</p>
+      ${ptLine(latest.pt)}
       <p class="muted small">Did ${esc(current)} say the right answer?</p>
       <div class="row"><button class="good" data-act="judge" data-v="1">✓ Correct</button><button class="bad" data-act="judge" data-v="0">✗ Wrong</button></div>
     </div>`;
@@ -417,7 +431,7 @@ function revealedList(g) {
   <div class="card">
     <h3 style="margin-bottom:6px">Clues so far</h3>
     <ul class="clues">
-      ${list.map(c => `<li><span class="n">${c.n}</span><span class="t">${esc(c.text)}</span>${sayBtn(c.text)}</li>`).join("")}
+      ${list.map(c => `<li><span class="n">${c.n}</span><span class="t">${esc(c.text)}${ptLine(c.pt)}</span>${sayBtn(c.text)}</li>`).join("")}
     </ul>
   </div>`;
 }
@@ -466,6 +480,7 @@ function cardEndView() {
       <div class="burst">${r.winnerId ? (wonMe ? "🎉" : "✅") : "🤷"}</div>
       <h3 style="margin-top:8px">It was…</h3>
       <div class="answer">${esc(r.answer)}</div>
+      ${r.answerPt ? `<div class="pt center" style="font-size:17px">${esc(r.answerPt)}</div>` : ""}
       ${sayBtn(r.answer)}
       <p style="margin-top:12px">${r.winnerId
         ? `<b>${wonMe ? "You" : esc(nameOf(r.winnerId))}</b> got it with ${r.cluesUsed} clue${r.cluesUsed > 1 ? "s" : ""}! <b>+${r.points}</b><br><span class="muted small">Reader ${esc(nameOf(r.readerId))} +${r.readerPoints}</span>`
@@ -477,10 +492,11 @@ function cardEndView() {
     ${canNext ? `<button class="accent" data-act="next">Next card ▶</button>` : `<p class="center muted">Waiting for ${esc(nameOf(g.readerId))} to show the next card…</p>`}
     ${scoreboard()}
     <div class="card">
-      <h3 style="margin-bottom:6px">Review the clues 📚</h3>
+      <div class="row" style="margin-bottom:6px"><h3 class="grow">Review the clues 📚</h3>
+        ${(r.cluesPt || []).some(Boolean) ? `<button class="pill ptbtn ${ui.pt ? "on" : ""}" data-act="toggle-pt">🇧🇷 PT</button>` : ""}</div>
       <p class="muted small">Tap 🔊 to hear the pronunciation.</p>
       <ul class="clues">
-        ${r.clues.map((t, i) => `<li><span class="n">${i + 1}</span><span class="t">${esc(t)}</span>${sayBtn(t)}</li>`).join("")}
+        ${r.clues.map((t, i) => `<li><span class="n">${i + 1}</span><span class="t">${esc(t)}${ptLine((r.cluesPt || [])[i])}</span>${sayBtn(t)}</li>`).join("")}
       </ul>
     </div>
   </div>`;
@@ -551,6 +567,7 @@ $app.addEventListener("click", async e => {
     return;
   }
   if (act === "toggle-answer") { ui.showAnswer = !ui.showAnswer; return render(); }
+  if (act === "toggle-pt") { ui.pt = !ui.pt; write("mysteryProfile.pt", ui.pt); return render(); }
   if (act === "target") return action("settings", { target: Number(v) });
   if (act === "level") {
     const levels = new Set(state.settings.levels);
