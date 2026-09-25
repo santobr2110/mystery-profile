@@ -175,6 +175,7 @@ function rulesBlock() {
     <summary>How to play</summary>
     <ol class="small">
       <li>A round has one card per player: everybody reads once, and the whole round uses the <b>same category</b>. The category changes in the next round.</li>
+      <li>Each player sets their <b>own level</b> in the lobby. About 7 out of 10 cards are chosen at the level of the player who guesses first.</li>
       <li>On each card one player is the <b>reader</b>. Only the reader sees the secret answer and its 10 clues.</li>
       <li>The other players take turns. On your turn, <b>pick a number</b> from 1 to 10.</li>
       <li>The reader <b>reads that clue aloud</b> in English. Everyone also sees it on screen.</li>
@@ -220,6 +221,7 @@ function homeView() {
 function lobbyView() {
   const s = state;
   const host = s.hostId === s.you;
+  const me = player(s.you) || {};
   const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   const base = local && s.lanUrl ? s.lanUrl : location.origin;
   const link = `${base}/?room=${s.code}`;
@@ -239,8 +241,18 @@ function lobbyView() {
       <ul class="players">
         ${s.players.map(p => `
           <li>${avatar(p.id)}<b class="grow" style="flex:1">${esc(p.name)}${isMe(p.id) ? ' <span class="muted small">(you)</span>' : ""}</b>
-          ${p.id === s.hostId ? '<span class="pill">👑 host</span>' : ""}<span class="dot ${p.online ? "" : "off"}"></span></li>`).join("")}
+          ${p.level ? `<span class="pill">${esc(p.level)}</span>` : ""}
+          ${p.id === s.hostId ? '<span class="pill">👑</span>' : ""}<span class="dot ${p.online ? "" : "off"}"></span></li>`).join("")}
       </ul>
+    </div>
+    <div class="card stack">
+      <div>
+        <h3>Your English level</h3>
+        <p class="muted small" style="margin:4px 0 8px">Most of the cards you guess first will be at this level.</p>
+        <div class="chips">
+          ${s.allLevels.map(l => `<button class="chip ${me.level === l ? "on" : ""}" data-act="my-level" data-v="${l}">${l} · ${LEVEL_NAME[l] || ""}</button>`).join("")}
+        </div>
+      </div>
     </div>
     <div class="card stack">
       <div>
@@ -251,8 +263,9 @@ function lobbyView() {
         <p class="muted small" style="margin-top:8px">The game ends only after everyone has played the same number of turns.</p>
       </div>
       <div>
-        <h3>English level</h3>
-        <div class="chips" style="margin-top:8px">
+        <h3>Levels of the room</h3>
+        <p class="muted small" style="margin:4px 0 8px">Used for the other cards, and for players who keep the default.</p>
+        <div class="chips">
           ${s.allLevels.map(l => `<button class="chip ${s.settings.levels.includes(l) ? "on" : ""}" data-act="level" data-v="${l}" ${host ? "" : "disabled"}>${l} · ${LEVEL_NAME[l] || ""}</button>`).join("")}
         </div>
       </div>
@@ -306,6 +319,9 @@ function worthBar(g) {
       <span class="worth">Worth ${g.pointsNow} pts</span>
     </div>
     <div class="meter"><i style="width:${(used / state.cluesPerCard) * 100}%"></i></div>
+    ${g.focusId ? `<p class="muted small" style="margin-top:6px">${g.focusOwnLevel
+      ? `🎯 Card at ${isMe(g.focusId) ? "your" : esc(nameOf(g.focusId)) + "'s"} level (${esc(g.level)})`
+      : `🎲 Mixed card (${esc(g.level)})`}</p>` : ""}
   </div>`;
 }
 
@@ -568,6 +584,7 @@ $app.addEventListener("click", async e => {
   }
   if (act === "toggle-answer") { ui.showAnswer = !ui.showAnswer; return render(); }
   if (act === "toggle-pt") { ui.pt = !ui.pt; write("mysteryProfile.pt", ui.pt); return render(); }
+  if (act === "my-level") return action("myLevel", { level: v });
   if (act === "target") return action("settings", { target: Number(v) });
   if (act === "level") {
     const levels = new Set(state.settings.levels);

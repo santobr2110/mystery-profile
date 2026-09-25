@@ -35,6 +35,7 @@ for _c in CARDS:
     CARD_COUNTS[_k + "/" + _c["category"]] = CARD_COUNTS.get(_k + "/" + _c["category"], 0) + 1
 
 CLUES_PER_CARD = 10
+OWN_LEVEL_SHARE = 0.7   # how often a card follows the level of the player who guesses first
 READER_BONUS = 2
 MAX_PLAYERS = 8
 MIN_PLAYERS = 2
@@ -219,7 +220,8 @@ def add_player(room, name):
         raise GameError("This game is full (8 players max).")
     if any(p["name"].lower() == name.lower() for p in room["players"]):
         raise GameError("Someone already has that name. Try another one.")
-    player = {"id": secrets.token_urlsafe(9), "name": name, "score": 0,
+    levels = room["settings"].get("levels") or DEFAULT_LEVELS
+    player = {"id": secrets.token_urlsafe(9), "name": name, "score": 0, "level": levels[0],
               "seen": time.time(), "polls": 0, "cards": 0}
     room["players"].append(player)
     return player
@@ -262,9 +264,17 @@ def points_now(room):
 
 # ---------------------------------------------------------------- game flow
 
+def room_levels(room):
+    levels = list(room["settings"].get("levels") or DEFAULT_LEVELS)
+    for p in room["players"]:                     # a player may pick a level outside the host's list
+        if p.get("level") and p["level"] not in levels:
+            levels.append(p["level"])
+    return levels
+
+
 def eligible(room):
     cats = room["settings"]["categories"] or CATEGORIES
-    levels = room["settings"].get("levels") or DEFAULT_LEVELS
+    levels = room_levels(room)
     deck = [i for i, c in enumerate(CARDS)
             if c["category"] in cats and c.get("level", "B1") in levels]
     return deck or list(range(len(CARDS)))  # no card matches: fall back to everything
@@ -289,14 +299,44 @@ def next_category(room):
     room["catCycle"] = pool
 
 
-def draw_card(room):
-    """Take the next card of the round's category, reshuffling the deck when it runs out."""
+def nearest_levels(level):
+    """The wanted level first, then the closest ones: A1 -> A2 -> B1 -> B2."""
+    if level not in LEVEL_ORDER:
+        return [level] + [l for l in LEVELS if l != level]
+    here = LEVEL_ORDER.index(level)
+    return sorted(LEVELS, key=lambda l: abs(LEVEL_ORDER.index(l) - here)
+                  if l in LEVEL_ORDER else 99)
+
+
+def take_from_deck(room, level):
     for _ in range(2):
         for pos in range(len(room["deck"]) - 1, -1, -1):
-            if CARDS[room["deck"][pos]]["category"] == room["roundCategory"]:
+            c = CARDS[room["deck"][pos]]
+            if c["category"] == room["roundCategory"] and \
+                    (level is None or c.get("level", "B1") == level):
                 return CARDS[room["deck"].pop(pos)]
         build_deck(room)
-    return CARDS[room["deck"].pop()]
+    return None
+
+
+def draw_card(room, level=None):
+    """Next card of the round's category. When that level has no card in this category
+    (Famous and Year only exist in B1/B2), fall back to the closest level."""
+    for want in (nearest_levels(level) if level else []):
+        card = take_from_deck(room, want)
+        if card:
+            return card
+    return take_from_deck(room, None) or CARDS[room["deck"].pop()]
+
+
+def card_level_for(room, focus):
+    """70% of the cards follow the level of the player who guesses first;
+    the rest are drawn from the levels the host allowed."""
+    allowed = list(room["settings"].get("levels") or DEFAULT_LEVELS)
+    own = focus.get("level") if focus else None
+    if own and random.random() < OWN_LEVEL_SHARE:
+        return own, True
+    return random.choice(allowed or [own or "B1"]), False
 
 
 def start_card(room):
@@ -307,7 +347,15 @@ def start_card(room):
     if new_round:
         room["roundNo"] = room.get("roundNo", 0) + 1
         next_category(room)
-    base = draw_card(room)
+    # who guesses first on this card: the card is chosen for that player's level
+    start = (room["readerIdx"] + 1) % n
+    order = [room["players"][(start + k) % n] for k in range(1, n)]
+    focus = next((p for p in order if is_online(p)), order[0] if order else None)
+    level, aimed = card_level_for(room, focus)
+    base = draw_card(room, level)
+    room["focusId"] = focus["id"] if focus else None
+    # true only when the card really came out at that player's own level
+    room["focusOwnLevel"] = bool(aimed and focus and base.get("level") == focus.get("level"))
     pt = base.get("pt") or {}
     pairs = list(zip(base["clues"][:CLUES_PER_CARD],
                      (pt.get("clues") or [None] * CLUES_PER_CARD)[:CLUES_PER_CARD]))
@@ -420,6 +468,13 @@ def act(room, player, data):
                             "categories": cats or list(CATEGORIES),
                             "levels": levels or list(DEFAULT_LEVELS)}
         bump(room)
+
+    elif kind == "myLevel":
+        level = data.get("level")
+        if level not in LEVELS:
+            raise GameError("Unknown level.")
+        player["level"] = level
+        bump(room, "%s is playing at level %s." % (player["name"], level))
 
     elif kind == "start":
         if not is_host:
@@ -572,7 +627,7 @@ def remove_player(room, player):
 
 def view(room, me):
     players = [{"id": p["id"], "name": p["name"], "score": p["score"], "cards": p["cards"],
-                "online": is_online(p)} for p in room["players"]]
+                "level": p.get("level"), "online": is_online(p)} for p in room["players"]]
     state = {"version": room["version"], "code": room["code"], "you": me["id"],
              "hostId": room["hostId"], "phase": room["phase"], "settings": room["settings"],
              "allCategories": CATEGORIES, "allLevels": LEVELS,
@@ -587,6 +642,7 @@ def view(room, me):
         n = max(1, len(room["players"]))
         g = {"round": room["round"], "category": card["category"],
              "roundNo": room.get("roundNo", 1),
+             "focusId": room.get("focusId"), "focusOwnLevel": room.get("focusOwnLevel", False),
              "cardInRound": (room["round"] - 1) % n + 1, "cardsPerRound": n,
              "level": card.get("level", "B1"), "readerId": rd["id"],
              "currentId": cg["id"] if cg else None, "step": room["step"],
