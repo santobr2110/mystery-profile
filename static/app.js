@@ -180,7 +180,7 @@ function rulesBlock() {
       <li>The other players take turns. On your turn, <b>pick a number</b> from 1 to 10.</li>
       <li>The reader <b>reads that clue aloud</b> in English. Everyone also sees it on screen.</li>
       <li>Then you can <b>make one guess</b> — type it, or say it out loud — or pass.</li>
-      <li>The fewer clues used, the more points: clue 1 = 10 pts, clue 10 = 1 pt. The reader gets +2 when someone gets it.</li>
+      <li>Every card is worth <b>10 points, split between the guesser and the reader</b>. Guess after 1 clue and you take 10, the reader 0; after 6 clues it is 5 and 5; after 10 clues it is 1 for you and 9 for the reader. Nobody scores if the card is not guessed.</li>
       <li>The first player to reach the target score wins — but the game only ends when <b>everyone has had the same number of turns</b>, so the last players always get their chance.</li>
     </ol>
   </details>`;
@@ -248,9 +248,9 @@ function lobbyView() {
     <div class="card stack">
       <div>
         <h3>Your English level</h3>
-        <p class="muted small" style="margin:4px 0 8px">Most of the cards you guess first will be at this level.</p>
+        <p class="muted small" style="margin:4px 0 8px">Most of the cards you guess first will be at this level.${me.levelSet ? "" : " Tap one — until then you follow the room."}</p>
         <div class="chips">
-          ${s.allLevels.map(l => `<button class="chip ${me.level === l ? "on" : ""}" data-act="my-level" data-v="${l}">${l} · ${LEVEL_NAME[l] || ""}</button>`).join("")}
+          ${s.allLevels.map(l => `<button class="chip ${me.level === l ? (me.levelSet ? "on" : "on faded") : ""}" data-act="my-level" data-v="${l}">${l} · ${LEVEL_NAME[l] || ""}</button>`).join("")}
         </div>
       </div>
     </div>
@@ -316,7 +316,7 @@ function worthBar(g) {
     <div class="row small" style="margin-bottom:6px">
       <span class="grow muted"><b>${used}</b> of ${state.cluesPerCard} clues opened${
         g.cardsPerRound > 1 ? ` · card ${g.cardInRound}/${g.cardsPerRound} of this round` : ""}</span>
-      <span class="worth">Worth ${g.pointsNow} pts</span>
+      <span class="worth">${g.pointsNow} pts · reader ${g.readerPointsNow}</span>
     </div>
     <div class="meter"><i style="width:${(used / state.cluesPerCard) * 100}%"></i></div>
     ${g.focusId ? `<p class="muted small" style="margin-top:6px">${g.focusOwnLevel
@@ -499,7 +499,7 @@ function cardEndView() {
       ${r.answerPt ? `<div class="pt center" style="font-size:17px">${esc(r.answerPt)}</div>` : ""}
       ${sayBtn(r.answer)}
       <p style="margin-top:12px">${r.winnerId
-        ? `<b>${wonMe ? "You" : esc(nameOf(r.winnerId))}</b> got it with ${r.cluesUsed} clue${r.cluesUsed > 1 ? "s" : ""}! <b>+${r.points}</b><br><span class="muted small">Reader ${esc(nameOf(r.readerId))} +${r.readerPoints}</span>`
+        ? `<b>${wonMe ? "You" : esc(nameOf(r.winnerId))}</b> got it with ${r.cluesUsed} clue${r.cluesUsed > 1 ? "s" : ""}!<br><b>+${r.points}</b> for the guess, <b>+${r.readerPoints}</b> for reader ${esc(nameOf(r.readerId))}`
         : `Nobody got it this time.`}</p>
     </div>
     ${!r.winnerId && lg && !lg.correct && g.readerId === state.you

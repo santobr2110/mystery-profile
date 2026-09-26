@@ -36,7 +36,7 @@ for _c in CARDS:
 
 CLUES_PER_CARD = 10
 OWN_LEVEL_SHARE = 0.7   # how often a card follows the level of the player who guesses first
-READER_BONUS = 2
+CARD_POINTS = 10        # split between the guesser and the reader on every card
 MAX_PLAYERS = 8
 MIN_PLAYERS = 2
 POLL_TIMEOUT = 25
@@ -222,6 +222,7 @@ def add_player(room, name):
         raise GameError("Someone already has that name. Try another one.")
     levels = room["settings"].get("levels") or DEFAULT_LEVELS
     player = {"id": secrets.token_urlsafe(9), "name": name, "score": 0, "level": levels[0],
+              "levelSet": False,   # follows the room until the player picks a level
               "seen": time.time(), "polls": 0, "cards": 0}
     room["players"].append(player)
     return player
@@ -256,10 +257,21 @@ def current_guesser(room):
     return get_player(room, room["guessers"][room["turn"] % len(room["guessers"])])
 
 
+def clues_now(room):
+    """Clues that will have been used if the card is guessed right now."""
+    return max(1, len(room["revealed"]) + (1 if room["step"] == "pick" else 0))
+
+
+def split_points(clues_used):
+    """The card is worth CARD_POINTS: the fewer clues it took, the bigger the guesser's share,
+    and the reader keeps the rest — the longer the card ran, the more the reader earns."""
+    used = min(CLUES_PER_CARD, max(1, clues_used))
+    guesser = CLUES_PER_CARD + 1 - used
+    return guesser, CARD_POINTS - guesser
+
+
 def points_now(room):
-    """Points a correct guess is worth right now (counting the clue about to be picked)."""
-    used = len(room["revealed"]) + (1 if room["step"] == "pick" else 0)
-    return max(1, CLUES_PER_CARD + 1 - used)
+    return split_points(clues_now(room))[0]
 
 
 # ---------------------------------------------------------------- game flow
@@ -405,15 +417,16 @@ def end_card(room, winner, clues_used=None):
               "clues": room["card"]["clues"], "cluesPt": room["card"]["cluesPt"],
               "answerPt": room["card"].get("answerPt"), "fact": room["card"].get("fact", "")}
     if winner:
-        pts = CLUES_PER_CARD + 1 - max(1, result["cluesUsed"])
+        pts, reader_pts = split_points(result["cluesUsed"])
         winner["score"] += pts
         winner["cards"] += 1
-        rd["score"] += READER_BONUS
-        result.update(winnerId=winner["id"], points=pts, readerPoints=READER_BONUS)
+        rd["score"] += reader_pts
+        result.update(winnerId=winner["id"], points=pts, readerPoints=reader_pts)
     room["result"] = result
     room["phase"] = "cardEnd"
     if winner:
-        bump(room, "%s got it: %s! +%d" % (winner["name"], result["answer"], result["points"]))
+        bump(room, "%s got it: %s! +%d (reader +%d)"
+             % (winner["name"], result["answer"], result["points"], result["readerPoints"]))
     else:
         bump(room, "Nobody got it. It was %s." % result["answer"])
 
@@ -467,6 +480,9 @@ def act(room, player, data):
         room["settings"] = {"target": max(10, min(200, target)),
                             "categories": cats or list(CATEGORIES),
                             "levels": levels or list(DEFAULT_LEVELS)}
+        for p in room["players"]:      # players who never picked a level follow the room
+            if not p.get("levelSet") and p.get("level") not in room["settings"]["levels"]:
+                p["level"] = room["settings"]["levels"][0]
         bump(room)
 
     elif kind == "myLevel":
@@ -474,6 +490,7 @@ def act(room, player, data):
         if level not in LEVELS:
             raise GameError("Unknown level.")
         player["level"] = level
+        player["levelSet"] = True
         bump(room, "%s is playing at level %s." % (player["name"], level))
 
     elif kind == "start":
@@ -627,13 +644,14 @@ def remove_player(room, player):
 
 def view(room, me):
     players = [{"id": p["id"], "name": p["name"], "score": p["score"], "cards": p["cards"],
-                "level": p.get("level"), "online": is_online(p)} for p in room["players"]]
+                "level": p.get("level"), "levelSet": p.get("levelSet", False),
+                "online": is_online(p)} for p in room["players"]]
     state = {"version": room["version"], "code": room["code"], "you": me["id"],
              "hostId": room["hostId"], "phase": room["phase"], "settings": room["settings"],
              "allCategories": CATEGORIES, "allLevels": LEVELS,
              "cardCounts": CARD_COUNTS, "players": players, "log": room["log"],
              "standings": standings(room) if room["phase"] in ("playing", "cardEnd") else None,
-             "cluesPerCard": CLUES_PER_CARD, "readerBonus": READER_BONUS, "lanUrl": LAN_URL,
+             "cluesPerCard": CLUES_PER_CARD, "cardPoints": CARD_POINTS, "lanUrl": LAN_URL,
              "minPlayers": MIN_PLAYERS, "maxPlayers": MAX_PLAYERS}
     if room["phase"] in ("playing", "cardEnd") and room["card"]:
         card = room["card"]
@@ -649,7 +667,9 @@ def view(room, me):
              "revealed": [{"n": n, "text": card["clues"][n - 1], "pt": card["cluesPt"][n - 1]}
                           for n in room["revealed"]],
              "hasPt": any(card["cluesPt"]),
-             "pointsNow": points_now(room), "lastGuess": room["lastGuess"],
+             "pointsNow": points_now(room),
+             "readerPointsNow": split_points(clues_now(room))[1],
+             "lastGuess": room["lastGuess"],
              "guessers": room["guessers"]}
         if rd is me:
             g["secret"] = {"answer": card["answer"], "answerPt": card.get("answerPt"),

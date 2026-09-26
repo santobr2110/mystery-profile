@@ -150,6 +150,7 @@ details.rules li + li { margin-top: 6px; }
   background: var(--surface-2); color: var(--ink); border: 2px solid var(--line);
 }
 .chip.on { background: var(--brand); color: var(--bg); border-color: var(--brand); }
+.chip.on.faded { background: transparent; color: var(--ink); border-style: dashed; }
 
 /* ---------- game */
 .role {

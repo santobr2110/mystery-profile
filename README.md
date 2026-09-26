@@ -21,17 +21,17 @@ Não precisa instalar nada, porque usa o Python que já vem no Mac.
 - Os outros jogam em turnos: escolhem um número de 1 a 10, o reader **lê a pista em voz alta** (em inglês) e a pista também aparece nas telas.
 - Quem escolheu pode dar **um palpite**, digitado ou falado (o reader marca ✓ Correct), ou pode passar.
 - O palpite digitado **perdoa erros de ortografia**: maiúsculas, acentos, singular/plural e espaços não contam ("Pele", "boot", "tooth brush"); cabe cerca de um erro a cada quatro letras ("umbrela", "elefant", "hamburguer"); e palavras escritas do jeito que soam também valem ("sizors" para *scissors*, "pinguin" para *penguin*). O jogo não aceita, porém, outra palavra real parecida ("house" não vale por *mouse*), nem anos vizinhos (1888 não vale por 1889). Se ainda assim recusar algo certo, o reader tem o botão "Actually, that's right — accept it".
-- Pontos: acertar com 1 pista vale 10, com 10 pistas vale 1. O reader ganha +2 quando alguém acerta.
-- **Cada jogador escolhe o próprio nível** no lobby (A1, A2, B1 ou B2). Em cada carta, quem começa adivinhando é o "dono" dela: **70% das cartas dele saem no nível que ele escolheu** e os outros 30% são sorteados entre os níveis marcados pelo anfitrião. Como o leitor muda a cada carta, todos são donos na mesma proporção. A tela mostra "🎯 Card at your level" ou "🎲 Mixed card".
+- Pontos: **cada carta vale 10 pontos, divididos entre quem acerta e o reader**. Acertou na 1ª dica: 10 para quem acertou e 0 para o reader. Na 6ª: 5 e 5. Na 10ª: 1 e 9. Ou seja, quem acerta rápido leva mais, e o reader ganha mais quando a carta rende muitas dicas. Se ninguém acertar, ninguém pontua.
+- **Cada jogador escolhe o próprio nível** no lobby (A1, A2, B1 ou B2); quem não escolher segue o nível marcado pelo anfitrião. Em cada carta, quem começa adivinhando é o "dono" dela: **70% das cartas dele saem no nível que ele escolheu** e os outros 30% são sorteados entre os níveis marcados pelo anfitrião. Como o leitor muda a cada carta, todos são donos na mesma proporção. A tela mostra "🎯 Card at your level" ou "🎲 Mixed card".
 - Se o nível do jogador não existir na categoria da rodada (Famous e Year só têm B1 e B2), o jogo usa o nível mais próximo.
 - O anfitrião escolhe as **categorias** e os **níveis da sala**, que valem para os 30% sorteados. O lobby mostra quantas cartas o baralho tem.
 - O primeiro jogador a atingir a meta (25/40/60/80) vence, **mas a partida só acaba quando todos tiverem jogado o mesmo número de turnos**, então quem joga por último sempre tem a sua chance. Se der empate na liderança, o jogo segue por até duas rodadas extras; persistindo o empate, a vitória é compartilhada.
 - No fim de cada carta aparecem todas as pistas com 🔊 para ouvir a pronúncia (revisão de vocabulário).
-- Nos níveis **A1 e A2**, o botão **🇧🇷 PT** no topo mostra a tradução de cada pista em português, e no fim da carta aparece também a tradução da resposta. A escolha fica salva no celular de cada jogador. B1 e B2 não têm tradução, de propósito.
+- O botão **🇧🇷 PT** no topo mostra a tradução de cada pista em português, em **todos os níveis**, e no fim da carta aparece também a tradução da resposta. A escolha fica salva no celular de cada jogador.
 
 ## Adicionar cartas
 
-Edite `cards.json`. Cada carta tem `category` (Person, Place, Thing, Food, Animal, Famous ou Year), `level` (A1, A2, B1 ou B2), `answer`, `aliases` (outras respostas aceitas) e exatamente **10** `clues`. As cartas de A1 e A2 têm ainda `pt` com `answer` e as 10 traduções, na mesma ordem das pistas. Categorias e níveis novos aparecem sozinhos no lobby. Reinicie o servidor depois de editar.
+Edite `cards.json`. Cada carta tem `category` (Person, Place, Thing, Food, Animal, Famous ou Year), `level` (A1, A2, B1 ou B2), `answer`, `aliases` (outras respostas aceitas) e exatamente **10** `clues`. Toda carta tem ainda `pt` com `answer` e as 10 traduções, na mesma ordem das pistas. Categorias e níveis novos aparecem sozinhos no lobby. Reinicie o servidor depois de editar.
 
 Total atual: **940 cartas** — 150 no A1, 180 no A2, 280 no B1 e 330 no B2.
 
