@@ -422,13 +422,17 @@ def end_card(room, winner, clues_used=None):
         winner["cards"] += 1
         rd["score"] += reader_pts
         result.update(winnerId=winner["id"], points=pts, readerPoints=reader_pts)
+    else:
+        rd["score"] += CARD_POINTS          # nobody guessed: the reader keeps the whole card
+        result.update(readerPoints=CARD_POINTS)
     room["result"] = result
     room["phase"] = "cardEnd"
     if winner:
         bump(room, "%s got it: %s! +%d (reader +%d)"
              % (winner["name"], result["answer"], result["points"], result["readerPoints"]))
     else:
-        bump(room, "Nobody got it. It was %s." % result["answer"])
+        bump(room, "Nobody got it. It was %s — reader %s takes all %d points."
+             % (result["answer"], rd["name"], CARD_POINTS))
 
 
 def standings(room):
