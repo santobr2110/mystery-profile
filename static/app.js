@@ -536,9 +536,9 @@ function gameOverView() {
   const host = state.hostId === state.you;
   const podium = [rk[1], rk[0], rk[2]].map((p, i) => p ? `
     <div class="step p${[2, 1, 3][i]}">
-      ${avatar(p.id, 44)}
-      <div class="who">${esc(p.name)}</div>
+      <img class="podium-mascot" src="img/body-${mascotOf(p.id)}.png" alt="">
       <div class="block">${p.score}</div>
+      <div class="who">${esc(p.name)}</div>
     </div>` : "").join("");
   return `
   <div class="stack">

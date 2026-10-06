@@ -191,7 +191,7 @@ label { display: block; font-weight: 800; font-size: 13px; letter-spacing: .02em
   animation: pop .45s ease-out;
 }
 .burst-mascot.sad { filter: grayscale(.7) brightness(.85); }
-.podium .avatar { margin: 0 auto 6px; display: block; }
+
 .divider { display: flex; align-items: center; gap: 12px; color: var(--ink-2); font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 details.rules summary { cursor: pointer; font-weight: 800; list-style: none; letter-spacing: -.01em; }
@@ -201,12 +201,12 @@ details.rules ol { padding-left: 20px; margin: 12px 0 0; color: var(--ink-2); }
 details.rules li + li { margin-top: 8px; }
 
 /* ---------- top bar */
-.topbar { display: flex; align-items: center; gap: 6px; margin-bottom: 16px; }
+.topbar { display: flex; align-items: center; gap: 5px; margin-bottom: 16px; }
 .topbar .title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  font-size: 19px; font-weight: 800; letter-spacing: -.03em; }
+  font-size: 17px; font-weight: 800; letter-spacing: -.03em; }
 .pill {
   display: inline-flex; align-items: center; gap: 5px; flex: none;
-  padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: .04em;
+  padding: 5px 9px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .03em;
   background: var(--surface); border: 1px solid var(--line); color: var(--ink-2);
 }
 .cat { color: #fff; border: 0; text-transform: uppercase; }
@@ -286,7 +286,7 @@ details.rules li + li { margin-top: 8px; }
 .pt { margin-top: 5px; font-size: .92em; font-style: italic; font-weight: 600; color: var(--ink-2); }
 .bigclue .pt, .secret .pt { font-size: 16px; font-style: normal; margin: 0 0 14px; }
 button.ptbtn {
-  width: auto; height: 32px; min-height: 32px; padding: 0 12px; font-size: 11px; letter-spacing: .06em;
+  width: auto; height: 30px; min-height: 30px; padding: 0 10px; font-size: 11px; letter-spacing: .04em;
   background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); box-shadow: none;
 }
 button.ptbtn.on { background: var(--grad-brand); border-color: transparent; color: #fff; }
@@ -314,13 +314,19 @@ button.ptbtn.on { background: var(--grad-brand); border-color: transparent; colo
 .reveal .answer { font-size: 38px; font-weight: 800; letter-spacing: -.035em; margin: 12px 0; }
 .reveal .pt { color: rgba(255, 255, 255, .78); }
 .burst { font-size: 56px; line-height: 1; }
-.podium { display: flex; align-items: flex-end; justify-content: center; gap: 10px; margin: 20px 0 4px; }
-.podium .step { flex: 1; max-width: 120px; text-align: center; }
-.podium .block { border-radius: 16px 16px 0 0; display: grid; place-items: center; font-size: 30px; font-weight: 800; color: #2a1407; }
-.podium .p1 .block { height: 124px; background: var(--grad-gold); }
-.podium .p2 .block { height: 88px; background: rgba(255, 255, 255, .55); color: #2a1407; }
-.podium .p3 .block { height: 64px; background: rgba(226, 106, 210, .5); color: #2a1407; }
-.podium .who { font-weight: 800; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.podium { display: flex; align-items: flex-end; justify-content: center; gap: 8px; margin: 22px 0 0; }
+.podium .step { flex: 1; max-width: 120px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+.podium .podium-mascot {           /* the character stands on top of its block */
+  width: 100%; max-width: 104px; height: auto; margin-bottom: -4px; align-self: flex-end;
+  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, .45));
+}
+.podium .p1 .podium-mascot { max-width: 118px; }
+.podium .p2 .podium-mascot, .podium .p3 .podium-mascot { max-width: 88px; }
+.podium .block { width: 100%; border-radius: 14px 14px 0 0; display: grid; place-items: center; font-size: 28px; font-weight: 800; color: #2a1407; }
+.podium .p1 .block { height: 104px; background: var(--grad-gold); }
+.podium .p2 .block { height: 76px; background: rgba(255, 255, 255, .62); color: #2a1407; }
+.podium .p3 .block { height: 58px; background: rgba(226, 106, 210, .55); color: #2a1407; }
+.podium .who { font-weight: 800; font-size: 15px; margin-top: 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .notice {
   border-radius: 16px; padding: 14px 16px; font-weight: 700;

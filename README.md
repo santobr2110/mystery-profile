@@ -58,14 +58,15 @@ magenta `#b31b85`, dourado `#f3b316`, fundo escuro `#181529`, fonte **Manrope**,
 e cartões arredondados com sombra suave. Os blocos escuros com degradê roxo (capa, pista da vez,
 resposta revelada) imitam as seções de destaque do site.
 
-Os **mascotes da Four Bridges Kids** aparecem como avatar de cada jogador, no aviso de vez,
-na comemoração do acerto e no pódio. Os arquivos ficam em `static/img/` e vieram do site da escola:
+Os **mascotes da Four Bridges Kids** aparecem como avatar de cada jogador, no aviso de vez e
+na comemoração do acerto; no pódio, cada um aparece de corpo inteiro em pé sobre o seu degrau.
+Cada jogador fica com um mascote fixo (laranja, azul, roxo, verde), o mesmo no avatar e no pódio. Os arquivos ficam em `static/img/` e vieram do site da escola:
 
 | Arquivo | Origem |
 |---|---|
 | `mascot-purple.webp` | `assets/mascots/four-bridges-mascot-purple-presenting.webp` (capa) |
-| `mascots-all.png`, `mascots.jpg` | `assets/campaigns/four-bridges-kids-hero-mascots.png` (original e versão leve) |
-| `face-play/speak/create/learn.png` | recortes dos quatro mascotes, usados como avatares |
+| `face-play/speak/create/learn.jpg` | rostos recortados dos quatro mascotes, usados como avatar |
+| `body-play/speak/create/learn.png` | mascotes de corpo inteiro, em pé sobre o pódio |
 | `logo-symbol.svg` | `assets/brand/logo-symbol-white.svg` |
 
 Para trocar a identidade, mexa só nas variáveis do topo de `static/style.css` e nos arquivos de `static/img/`.
