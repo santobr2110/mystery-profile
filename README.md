@@ -51,6 +51,25 @@ As pistas de B1 e B2 são propositalmente indiretas: no B2 nenhuma pista entrega
 
 O servidor é um único arquivo Python sem dependências. Dá para publicar em serviços como Render ou Railway (comando de start: `python3 server.py`; a porta vem da variável `PORT`).
 
+## Visual
+
+A identidade segue o site da **Four Bridges** (fourbridges.com.br): roxo profundo `#4b126f`,
+magenta `#b31b85`, dourado `#f3b316`, fundo escuro `#181529`, fonte **Manrope**, botões em pílula
+e cartões arredondados com sombra suave. Os blocos escuros com degradê roxo (capa, pista da vez,
+resposta revelada) imitam as seções de destaque do site.
+
+Os **mascotes da Four Bridges Kids** aparecem como avatar de cada jogador, no aviso de vez,
+na comemoração do acerto e no pódio. Os arquivos ficam em `static/img/` e vieram do site da escola:
+
+| Arquivo | Origem |
+|---|---|
+| `mascot-purple.webp` | `assets/mascots/four-bridges-mascot-purple-presenting.webp` (capa) |
+| `mascots-all.png`, `mascots.jpg` | `assets/campaigns/four-bridges-kids-hero-mascots.png` (original e versão leve) |
+| `face-play/speak/create/learn.png` | recortes dos quatro mascotes, usados como avatares |
+| `logo-symbol.svg` | `assets/brand/logo-symbol-white.svg` |
+
+Para trocar a identidade, mexa só nas variáveis do topo de `static/style.css` e nos arquivos de `static/img/`.
+
 ## Arquivos
 
 | Arquivo | O que é |
@@ -59,3 +78,4 @@ O servidor é um único arquivo Python sem dependências. Dá para publicar em s
 | `cards.json` | As 940 cartas nos níveis A1, A2, B1 e B2 |
 | `cards_classic_backup.json` | Backup das 55 cartas antigas (pessoas e lugares famosos), não é usado pelo jogo |
 | `static/` | O app do celular (HTML/CSS/JS) |
+| `static/img/` | Mascotes e logo da Four Bridges usados na interface |

@@ -4,7 +4,8 @@ const $app = document.getElementById("app");
 const $toast = document.getElementById("toast");
 const params = new URLSearchParams(location.search);
 const KEY = "mysteryProfile.session" + (params.get("slot") || "");
-const COLORS = ["#ef6f5e", "#2a9d9f", "#e69a1c", "#5aa13c", "#7b61c9", "#d65a9a", "#3b82c4", "#8a6d3b"];
+const COLORS = ["#e2621a", "#2f7de1", "#8b2fd6", "#5aa117", "#b31b85", "#e08a12", "#0f8f86", "#5b2ca8"];
+const MASCOTS = ["play", "speak", "create", "learn"];   // Four Bridges Kids mascots
 const CAT_EMOJI = { Person: "🧑", Place: "🌍", Thing: "📦", Animal: "🐾", Food: "🍎", Famous: "🌟", Year: "📅" };
 const LEVEL_NAME = { A1: "Beginner", A2: "Elementary", B1: "Intermediate", B2: "Advanced" };
 
@@ -35,7 +36,13 @@ function toast(msg) {
 function player(id) { return state.players.find(p => p.id === id); }
 function nameOf(id) { const p = state && player(id); return p ? p.name : "?"; }
 function colorOf(id) { const i = state.players.findIndex(p => p.id === id); return COLORS[(i < 0 ? 0 : i) % COLORS.length]; }
-function avatar(id) { return `<span class="avatar" style="background:${colorOf(id)}">${esc(nameOf(id).slice(0, 1).toUpperCase())}</span>`; }
+function mascotOf(id) {
+  const i = state.players.findIndex(p => p.id === id);
+  return MASCOTS[(i < 0 ? 0 : i) % MASCOTS.length];
+}
+function avatar(id, size) {
+  return `<span class="avatar" style="${size ? `width:${size}px;height:${size}px;` : ""}background-image:url(img/face-${mascotOf(id)}.jpg);box-shadow:inset 0 0 0 2px ${colorOf(id)}"></span>`;
+}
 function isMe(id) { return state && id === state.you; }
 
 let voice = null;
@@ -58,7 +65,7 @@ function ptLine(text) {
 }
 function ptToggle() {
   if (!state.game || !state.game.hasPt) return "";
-  return `<button class="pill ptbtn ${ui.pt ? "on" : ""}" data-act="toggle-pt" title="Tradução">🇧🇷 PT</button>`;
+  return `<button class="pill ptbtn ${ui.pt ? "on" : ""}" data-act="toggle-pt" title="Tradução"><span class="bi">🇧🇷</span>PT</button>`;
 }
 
 // ------------------------------------------------------------ network
@@ -191,10 +198,13 @@ function homeView() {
   const name = read("mysteryProfile.name") || "";
   return `
   <div class="stack">
-    <div class="logo">
-      <div class="mark">?</div>
-      <h1>Mystery<br>Profile</h1>
-      <p class="muted">Guess who, where or what — in English!</p>
+    <div class="hero">
+      <img class="hero-mascot" src="img/mascot-purple.webp" alt="" width="300" height="375">
+      <div class="hero-text">
+        <h3>English party game</h3>
+        <h1>Mystery<br>Profile</h1>
+        <p>Guess who, where or what — in English!</p>
+      </div>
     </div>
     <div class="card stack">
       <div>
@@ -234,7 +244,7 @@ function lobbyView() {
       <h3>Game code</h3>
       <div class="room-code">${esc(s.code)}</div>
       <p class="muted small">Friends open <b>${esc(base.replace(/^https?:\/\//, ""))}</b> and type this code.</p>
-      <div style="margin-top:12px"><button class="secondary" data-act="share" data-link="${esc(link)}">📨 Share invite link</button></div>
+      <div style="margin-top:12px"><button class="secondary" data-act="share" data-link="${esc(link)}"><span class="bi">📨</span>Share invite link</button></div>
     </div>
     <div class="card">
       <div class="row" style="margin-bottom:6px"><h3 class="grow">Players</h3><span class="muted small">${s.players.length}/${s.maxPlayers}</span></div>
@@ -338,11 +348,11 @@ function gameView() {
     html += `
     <div class="stack">
       ${finalNotice()}
-      <div class="role reader"><span class="emoji">🎙️</span><div>You are the reader.<div class="small" style="font-weight:600;opacity:.8">Don't show your screen!</div></div></div>
+      <div class="role reader"><img class="role-mascot" src="img/face-speak.jpg" alt=""><div>You are the reader.<div class="small" style="font-weight:600;opacity:.85">Don't show your screen!</div></div></div>
       <div class="card secret">
         <h3>The answer is</h3>
         <div class="answer ${ui.showAnswer ? "" : "hidden"}">${esc(g.secret.answer)}</div>
-        <button class="ghost" data-act="toggle-answer">${ui.showAnswer ? "🙈 Hide" : "👁️ Tap to see the answer"}</button>
+        <button class="ghost" data-act="toggle-answer">${ui.showAnswer ? '<span class="bi">🙈</span>Hide' : '<span class="bi">👁️</span>Tap to see the answer'}</button>
       </div>
       ${readerActions(g, current, latest)}
       <div class="card">
@@ -366,7 +376,7 @@ function gameView() {
   html += `<div class="stack">` + finalNotice();
   if (amCurrent && g.step === "pick") {
     html += `
-      <div class="role me anim-pop"><span class="emoji">👉</span><div>Your turn! Pick a clue number.</div></div>
+      <div class="role me anim-pop"><img class="role-mascot" src="img/face-${mascotOf(state.you)}.jpg" alt=""><div>Your turn! Pick a clue number.</div></div>
       <div class="card">
         <div class="grid">
           ${Array.from({ length: state.cluesPerCard }, (_, i) => i + 1).map(n => {
@@ -377,7 +387,7 @@ function gameView() {
       </div>`;
   } else if (amCurrent && g.step === "guess") {
     html += `
-      <div class="role me"><span class="emoji">💡</span><div>Listen to ${esc(nameOf(g.readerId))}, then guess!</div></div>
+      <div class="role me"><img class="role-mascot" src="img/face-${mascotOf(state.you)}.jpg" alt=""><div>Listen to ${esc(nameOf(g.readerId))}, then guess!</div></div>
       <div class="card bigclue anim-pop">
         <div class="num">Clue #${latest.n}</div>
         <div class="text">${esc(latest.text)}</div>
@@ -493,7 +503,8 @@ function cardEndView() {
   <div class="stack">
     ${gameHeader(g)}
     <div class="card reveal anim-pop">
-      <div class="burst">${r.winnerId ? (wonMe ? "🎉" : "✅") : "🤷"}</div>
+      ${r.winnerId ? `<img class="burst-mascot" src="img/face-${mascotOf(r.winnerId)}.jpg" alt="">`
+                   : `<img class="burst-mascot sad" src="img/face-${mascotOf(g.readerId)}.jpg" alt="">`}
       <h3 style="margin-top:8px">It was…</h3>
       <div class="answer">${esc(r.answer)}</div>
       ${r.answerPt ? `<div class="pt center" style="font-size:17px">${esc(r.answerPt)}</div>` : ""}
@@ -509,7 +520,7 @@ function cardEndView() {
     ${scoreboard()}
     <div class="card">
       <div class="row" style="margin-bottom:6px"><h3 class="grow">Review the clues 📚</h3>
-        ${(r.cluesPt || []).some(Boolean) ? `<button class="pill ptbtn ${ui.pt ? "on" : ""}" data-act="toggle-pt">🇧🇷 PT</button>` : ""}</div>
+        ${(r.cluesPt || []).some(Boolean) ? `<button class="pill ptbtn ${ui.pt ? "on" : ""}" data-act="toggle-pt"><span class="bi">🇧🇷</span>PT</button>` : ""}</div>
       <p class="muted small">Tap 🔊 to hear the pronunciation.</p>
       <ul class="clues">
         ${r.clues.map((t, i) => `<li><span class="n">${i + 1}</span><span class="t">${esc(t)}${ptLine((r.cluesPt || [])[i])}</span>${sayBtn(t)}</li>`).join("")}
@@ -525,6 +536,7 @@ function gameOverView() {
   const host = state.hostId === state.you;
   const podium = [rk[1], rk[0], rk[2]].map((p, i) => p ? `
     <div class="step p${[2, 1, 3][i]}">
+      ${avatar(p.id, 44)}
       <div class="who">${esc(p.name)}</div>
       <div class="block">${p.score}</div>
     </div>` : "").join("");
@@ -532,7 +544,7 @@ function gameOverView() {
   <div class="stack">
     ${topbar("Game over")}
     <div class="card reveal anim-pop">
-      <div class="burst">🏆</div>
+      <img class="burst-mascot" src="img/face-${mascotOf(winners[0].id)}.jpg" alt="">
       <h3 style="margin-top:8px">${winners.length > 1 ? "It's a tie!" : "The winner is"}</h3>
       <div class="answer">${winners.map(w => esc(w.name)).join(" & ")}</div>
       <div class="podium">${podium}</div>
